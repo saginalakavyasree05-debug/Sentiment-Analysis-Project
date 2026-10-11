@@ -51,3 +51,9 @@ The application uses `distilbert-base-uncased-finetuned-sst-2-english`, a Distil
 
 ## 👩‍💻 Author
 Kavya
+
+## 📸 Project Screenshot
+positive
+![Sentiment Analysis Demo](sentiment-analysis-demo.png)
+negative
+![Sentiment Analysis Demo](sentiment-analysis-demo1.png)
