@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sentiment Checker</title>
+<style>
+  :root {
+    --bg: #eef2f6; --ink: #14213d; --muted: #5c6b80; --card: #ffffff;
+    --pos: #1b9a6c; --neg: #d6455d; --line: #d3dbe5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0f1724; --ink: #e8edf5; --muted: #93a1b5; --card: #172236; --line: #2a3a54; }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; background: var(--bg); color: var(--ink);
+    font-family: "Avenir Next", "Segoe UI", system-ui, sans-serif;
+    display: flex; justify-content: center; padding: 24px 16px;
+  }
+  main { width: 100%; max-width: 560px; }
+  h1 { font-size: 2rem; line-height: 1.15; margin: 8px 0 8px; }
+  p.sub { color: var(--muted); margin: 0 0 24px; line-height: 1.5; }
+  textarea {
+    width: 100%; min-height: 130px; padding: 14px; font: inherit; font-size: 1.05rem;
+    color: var(--ink); background: var(--card); border: 2px solid var(--line);
+    border-radius: 10px; resize: vertical;
+  }
+  textarea:focus-visible, button:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+  button {
+    margin-top: 12px; width: 100%; padding: 14px; font: inherit; font-weight: 600;
+    background: var(--ink); color: var(--bg); border: 0; border-radius: 10px; cursor: pointer;
+  }
+  button:disabled { opacity: .6; cursor: wait; }
+  #result { margin-top: 24px; display: none; }
+  .verdict { font-size: 2.4rem; font-weight: 800; margin: 0 0 12px; }
+  .bar { height: 14px; background: var(--line); border-radius: 7px; overflow: hidden; }
+  .fill { height: 100%; width: 0; transition: width .5s ease; }
+  .conf { color: var(--muted); margin-top: 8px; }
+  .error { color: var(--neg); margin-top: 12px; }
+  .pos { color: var(--pos); } .neg { color: var(--neg); }
+  .fill.pos { background: var(--pos); } .fill.neg { background: var(--neg); }
+  @media (prefers-reduced-motion: reduce) { .fill { transition: none; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Is this sentence positive or negative?</h1>
+  <p class="sub">Type any sentence and the model will classify its sentiment.</p>
+
+  <textarea id="text" placeholder=" "></textarea>
+  <button id="go">Analyze sentiment</button>
+
+  <div id="error" class="error" role="alert"></div>
+  <section id="result" aria-live="polite">
+    <p class="verdict" id="verdict"></p>
+    <div class="bar"><div class="fill" id="fill"></div></div>
+    <p class="conf" id="conf"></p>
+  </section>
+</main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  async function analyze() {
+    const text = $("text").value.trim();
+    $("error").textContent = "";
+    if (!text) { $("error").textContent = "Type a sentence first."; return; }
+
+    $("go").disabled = true;
+    $("go").textContent = "Analyzing...";
+    try {
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Something went wrong.");
+
+      const positive = data.label === "POSITIVE";
+      const cls = positive ? "pos" : "neg";
+      $("verdict").textContent = positive ? "Positive" : "Negative";
+      $("verdict").className = "verdict " + cls;
+      $("fill").className = "fill " + cls;
+      $("conf").textContent = "Confidence: " + Math.round(data.score * 100) + "%";
+      $("result").style.display = "block";
+      $("fill").style.width = "0";
+      requestAnimationFrame(() => { $("fill").style.width = data.score * 100 + "%"; });
+    } catch (e) {
+      $("error").textContent = e.message;
+    } finally {
+      $("go").disabled = false;
+      $("go").textContent = "Analyze sentiment";
+    }
+  }
+
+  $("go").addEventListener("click", analyze);
+  $("text").addEventListener("keydown", (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") analyze();
+  });
+</script>
+</body>
+</html>
